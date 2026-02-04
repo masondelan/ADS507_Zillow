@@ -1,0 +1,10 @@
+FROM apache/airflow:2.8.4-python3.11
+
+# Copy requirements in (root can copy files)
+USER root
+COPY etl/requirements.txt /tmp/requirements.txt
+RUN chown airflow:0 /tmp/requirements.txt
+
+# Install Python deps as the airflow user (this is the key)
+USER airflow
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
