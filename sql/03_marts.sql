@@ -21,6 +21,8 @@
 -- - Price-to-rent ratio is calculated as:
 --   home_value / (rent_value * 12)
 -- - This metric is commonly used as a rough indicator of housing affordability
+-- - Using LEFT JOIN to preserve all ZHVI data even when ZORI is missing
+-- - Wrapped division in CASE WHEN to avoid divide-by-zero errors
 
 DROP TABLE IF EXISTS mart_housing_time_series;
 
@@ -32,11 +34,17 @@ SELECT
     z.date,
     z.home_value,
     r.rent_value,
-    z.home_value / (r.rent_value * 12) AS price_to_rent_ratio
+    CASE
+        WHEN r.rent_value IS NOT NULL AND r.rent_value > 0
+        THEN z.home_value / (r.rent_value * 12)
+        ELSE NULL
+    END AS price_to_rent_ratio
 FROM stg_zhvi z
-JOIN stg_zori r
+LEFT JOIN stg_zori r
   ON z.region_id = r.region_id
  AND z.date = r.date;
+
+CREATE INDEX idx_mart_time_series_state_date ON mart_housing_time_series(state, date);
 
 -- ============================================================================
 -- Mart Table: Housing Growth Metrics
@@ -46,6 +54,7 @@ JOIN stg_zori r
 -- Notes:
 -- - YoY growth compares each month to the same month in the prior year
 -- - Window functions are used to avoid self-joins and improve readability
+-- - Wrapped division in CASE WHEN to avoid divide-by-zero errors
 
 DROP TABLE IF EXISTS mart_housing_growth;
 
@@ -60,12 +69,24 @@ SELECT
         PARTITION BY region_id
         ORDER BY date
     ) AS home_value_last_year,
-    (home_value - LAG(home_value, 12) OVER (
-        PARTITION BY region_id
-        ORDER BY date
-    )) / LAG(home_value, 12) OVER (
-        PARTITION BY region_id
-        ORDER BY date
-    ) AS home_value_yoy
+    CASE
+        WHEN LAG(home_value, 12) OVER (
+            PARTITION BY region_id
+            ORDER BY date
+        ) IS NOT NULL
+        AND LAG(home_value, 12) OVER (
+            PARTITION BY region_id
+            ORDER BY date
+        ) > 0
+        THEN (home_value - LAG(home_value, 12) OVER (
+            PARTITION BY region_id
+            ORDER BY date
+        )) / LAG(home_value, 12) OVER (
+            PARTITION BY region_id
+            ORDER BY date
+        )
+        ELSE NULL
+    END AS home_value_yoy
 FROM stg_zhvi;
 
+CREATE INDEX idx_mart_growth_state_date ON mart_housing_growth(state, date);

@@ -103,8 +103,8 @@ The pipeline follows a three-layer medallion architecture. All housing data is s
 
 Raw data as extracted from Zillow, stored in long format after unpivoting from the original wide CSV structure.
 
-- `raw_zhvi_all_homes` — Home value index data (one row per state per month)
-- `raw_zori_all_homes` — Rental index data (one row per state per month)
+- `raw_zhvi` — Home value index data (one row per state per month)
+- `raw_zori` — Rental index data (one row per state per month)
 
 ### Layer 2: Staging (Silver)
 
@@ -140,7 +140,7 @@ The Airflow DAG `zillow_etl_pipeline` orchestrates the following tasks:
 | `load_zori_to_raw`     | Unpivots and loads ZORI data into the raw layer                    |
 | `transform_to_staging` | Cleans and filters raw data into staging tables                    |
 | `build_data_marts`     | Builds analytics tables with derived metrics (YoY growth, ratios)  |
-| `data_quality_check`   | Validates row counts and data integrity across layers              |
+| `data_quality_check`   | Validates row counts, null checks on key columns, value ranges (no negatives), and date ranges across all layers |
 
 ### Schedule
 
