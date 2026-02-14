@@ -19,7 +19,7 @@ def get_db_connection_string() -> str:
         str: SQLAlchemy connection string
     """
     host = os.getenv("PIPE_DB_HOST", "localhost")
-    port = os.getenv("PIPE_DB_PORT", "5434")
+    port = os.getenv("PIPE_DB_PORT", "5432")
     database = os.getenv("PIPE_DB_NAME", "pipeline")
     user = os.getenv("PIPE_DB_USER", "pipeline")
     password = os.getenv("PIPE_DB_PASSWORD", "pipeline")
@@ -74,40 +74,58 @@ def melt_zillow_dataframe(
     return df_long
 
 
-def load_to_postgres(
-    df: pd.DataFrame,
-    table_name: str,
-    if_exists: str = 'replace'
-) -> int:
-    """
-    Load DataFrame into PostgreSQL table.
+import psycopg2
+from psycopg2.extras import execute_values
 
-    Args:
-        df: DataFrame to load
-        table_name: Target table name
-        if_exists: How to behave if table exists ('replace', 'append', 'fail')
 
-    Returns:
-        int: Number of rows loaded
+def load_to_postgres(df: pd.DataFrame, table_name: str, if_exists: str = 'replace') -> int:
     """
-    conn_string = get_db_connection_string()
-    engine = create_engine(conn_string)
+    Load DataFrame into PostgreSQL using psycopg2 directly.
+    This bypasses pandas.to_sql() compatibility issues.
+    """
+
+    host = os.getenv("PIPE_DB_HOST", "localhost")
+    port = os.getenv("PIPE_DB_PORT", "5432")
+    database = os.getenv("PIPE_DB_NAME", "pipeline")
+    user = os.getenv("PIPE_DB_USER", "pipeline")
+    password = os.getenv("PIPE_DB_PASSWORD", "pipeline")
 
     print(f"Loading {len(df)} rows into {table_name}...")
 
-    df.to_sql(
-        name=table_name,
-        con=engine,
-        if_exists=if_exists,
-        index=False,
-        method='multi',
-        chunksize=1000
+    conn = psycopg2.connect(
+        host=host,
+        port=port,
+        dbname=database,
+        user=user,
+        password=password
     )
 
+    cur = conn.cursor()
+
+    # Drop table if replacing
+    if if_exists == "replace":
+        cur.execute(f"DROP TABLE IF EXISTS {table_name};")
+
+    # Create table dynamically
+    columns = df.columns
+    col_defs = ", ".join([f"{col} TEXT" for col in columns])
+    cur.execute(f"CREATE TABLE IF NOT EXISTS {table_name} ({col_defs});")
+
+    # Insert data
+    values = [tuple(x) for x in df.astype(str).to_numpy()]
+    insert_query = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES %s"
+
+    execute_values(cur, insert_query, values)
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
     print(f"✓ Loaded {len(df)} rows into {table_name}")
-    engine.dispose()
 
     return len(df)
+
+
 
 
 def load_zhvi(df_zhvi: pd.DataFrame) -> int:
