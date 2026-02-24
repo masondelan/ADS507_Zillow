@@ -33,7 +33,7 @@ This pipeline extracts housing market data from [Zillow Research](https://www.zi
 
 #### ZHVI (Zillow Home Value Index)
 
-The Zillow Home Value Index (ZHVI) is a smoothed, seasonally adjusted measure of the typical home value and market changes across a given region and housing type. This pipeline uses the **All Homes (35th–65th percentile)** dataset at the **state level**.
+The Zillow Home Value Index (ZHVI) is a smoothed, seasonally adjusted measure of the typical home value and market changes across a given region and housing type. This pipeline uses the **All Homes (35th–65th percentile)** dataset at the **metro level**.
 
 - Typical U.S. home value (2025): ~$368,000
 
@@ -41,7 +41,7 @@ For methodology details, see [Zillow's ZHVI documentation](https://www.zillow.co
 
 #### ZORI (Zillow Observed Rent Index)
 
-The Zillow Observed Rent Index (ZORI) is a smoothed measure of the typical observed market rate rent across a given region. This pipeline uses the **All Homes (40th–60th percentile)** dataset at the **state level**.
+The Zillow Observed Rent Index (ZORI) is a smoothed measure of the typical observed market rate rent across a given region. This pipeline uses the **All Homes (40th–60th percentile)** dataset at the **metro level**.
 
 - National rent index (2025): ~$2,049/month
 
